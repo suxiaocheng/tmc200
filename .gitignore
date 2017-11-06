@@ -1,0 +1,7 @@
+# ignore execute bin
+tmc200
+reg
+*.bak
+*~
+*.o
+depend
