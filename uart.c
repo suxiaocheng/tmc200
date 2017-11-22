@@ -133,7 +133,7 @@ int init_uart(char *name)
 		return -1;
 	}
 
-	return ret;
+	return uart_fd;
 }
 
 int close_uart(void)
@@ -178,7 +178,20 @@ int test_uart(void)
 
 void flush_uart(void)
 {
+	#if 1
+	int ret;
+	unsigned char buf[16];
+	debug("*****Start of %s\n", __func__);
+	do {
+		ret = uart_read_bytes(buf, sizeof(buf), 1);
+		if (ret > 0) {
+			dump_memory(buf, ret);
+		}
+	} while(ret > 0);
+	debug("*****End of %s\n", __func__);
+	#else
 	tcflush(uart_fd, TCIOFLUSH);
+	#endif
 }
 
 int uart_send_bytes(char *buf, int count)
@@ -195,7 +208,7 @@ int uart_send_bytes(char *buf, int count)
 			break;
 		}		
 	}
-	
+
 	/* Filter the send bytes in code directly */
 	if (count > 0) {
 		tmp = read(uart_fd, recv_buf, count);
@@ -215,7 +228,7 @@ int uart_send_bytes(char *buf, int count)
 		return count;
 	}
 
-	err("%s: %d send and timeout\n", __func__, offset);	
+	err("%s: %d send and timeout\n", __func__, offset);
 
 	return -EIO;
 }
@@ -231,8 +244,8 @@ int uart_read_bytes(char *buf, int count, int timeout)
 		if (offset >= count) {
 			break;
 		}
-		--timeout;
 		if (timeout > 0) {
+			--timeout;
 			usleep(100);
 		} else {
 			break;

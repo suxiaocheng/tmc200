@@ -9,12 +9,13 @@
 #include <time.h>
 #include <sys/mman.h>
 #include <errno.h> 
+#include "debug.h"
 
 #define AUDIO_REG_BASE   (0x4A003000)
 #define MAP_SIZE        1024*4
 static int dev_fd;
 
-#define DEV_NAME  "/dev/ttyS0"
+#define DEV_NAME  "/dev/ttyS6"
 static int g_fd = -1;
 void set_speed(int speed)
 {
@@ -31,23 +32,28 @@ void set_speed(int speed)
 	tcgetattr(g_fd, &Opt);
 	for (i= 0; i < sizeof(speed_arr)/sizeof(int); i++) {
 		if (speed == name_arr[i]) {
+			debug("Index: %d, speed: %d\n", i, name_arr[i]);
 			tcflush(g_fd, TCIOFLUSH);
-			cfsetispeed(&Opt, speed_arr[i]);
-			cfsetospeed(&Opt, speed_arr[i]);
+			status = cfsetispeed(&Opt, speed_arr[i]);
+			debug("cfsetispeed: %d\n", status);
+			status = cfsetospeed(&Opt, speed_arr[i]);
+			debug("cfsetospeed: %d\n", status);
 			status = tcsetattr(g_fd, TCSANOW, &Opt);
-			if (status != 0) {
-				printf("tcsetattr g_fd1");
-				return;
-			}
-			tcflush(g_fd,TCIOFLUSH);
+			debug("tcsetattr: %d\n", status);
+			status = tcflush(g_fd,TCIOFLUSH);
+			debug("tcflush: %d\n", status);
+			break;
 		}
 	}
 }
 
 int set_Parity(int databits, int stopbits, int parity)
 {
+	int status;
 	struct termios options;
-	if (tcgetattr(g_fd, &options) !=  0) {
+	status = tcgetattr(g_fd, &options);
+	debug("tcgetattr: %d\n", status);
+	if (status !=  0) {
 		printf("SetupSerial 1");
 		return 0;
 	}
@@ -123,7 +129,9 @@ int set_Parity(int databits, int stopbits, int parity)
 	options.c_cc[VTIME] = 10;
 	options.c_cc[VMIN] = 0;
 	/* Update the options and do it NOW */
-	if (tcsetattr(g_fd, TCSANOW, &options) != 0) {
+	status = tcsetattr(g_fd, TCSANOW, &options);
+	debug("tcgetattr: %d\n", status);
+	if (status != 0) {
 		printf("SetupSerial 3");
 		return 0;
 	}

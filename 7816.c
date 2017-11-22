@@ -24,6 +24,7 @@ void set_apdu_buf(uint8_t *buf, uint32_t count)
 	for (i=0; i<count; i++) {
 		apdu[i] = buf[i];
 	}
+	apdu_length = count;
 }
 
 uint8_t CARDrecvbyte(void)
@@ -48,15 +49,6 @@ void CARDsendbyte(uint8_t data)
 	if (ret != 1) {
 		STATE_FLAG = 1;
 	}
-
-	ret = uart_read_bytes(&tmp, 1, TIMEOUT_CHAR);
-	if (ret != 1) {
-		STATE_FLAG = 1;
-	}
-
-	if (tmp != data) {
-		STATE_FLAG = 1;
-	}
 }
 
 #if 1
@@ -78,7 +70,7 @@ uint8_t CARDreset(void)
 	
 	ret = reset_config_status(0);
 	if (ret != 0) {
-		return ret;
+		return 0;
 	}
 	
 	/* Wait at least 400/f, at least 114us@3.5MHz */
@@ -88,7 +80,7 @@ uint8_t CARDreset(void)
 	
 	ret = reset_config_status(1);
 	if (ret != 0) {
-		return ret;
+		return 0;
 	}
 
 	temp = CARDrecvbyte();

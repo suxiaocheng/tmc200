@@ -2,10 +2,14 @@
 #include "7816.h"
 #include "uart.h"
 
+#define PWM_DIR		"/sys/class/pwm/pwmchip2/"
+#define PWM_CHANNEL	"pwm0/"
+
 config_device_t config_device_list[] = {
-	{"/sys/class/pwm/pwmchip0/pwm1/duty_cycle", "140", TYPE_STR},
-	{"/sys/class/pwm/pwmchip0/pwm1/period", "280", TYPE_STR},	
-	{"/sys/class/pwm/pwmchip0/pwm1/enable", "1", TYPE_STR},
+	{PWM_DIR"export", "0", TYPE_STR},
+	{PWM_DIR PWM_CHANNEL "period", "280", TYPE_STR},
+	{PWM_DIR PWM_CHANNEL "duty_cycle", "140", TYPE_STR},
+	{PWM_DIR PWM_CHANNEL "enable", "1", TYPE_STR},
 	{"/sys/class/gpio/export", RST_GPIO, TYPE_STR},
 	{"/sys/class/gpio/gpio"RST_GPIO"/direction", "out", TYPE_STR},
 	{"/sys/class/gpio/gpio"RST_GPIO"/value", "1", TYPE_STR},
@@ -14,6 +18,8 @@ config_device_t config_device_list[] = {
 
 config_device_t unconfig_device_list[] = {
 	{"/sys/class/gpio/unexport", RST_GPIO, TYPE_STR},
+	{"/sys/class/pwm/pwmchip2/pwm0/enable", "0", TYPE_STR},
+	{"/sys/class/pwm/pwmchip2/unexport", "0", TYPE_STR},
 	{NULL, NULL, TYPE_NONE}
 };
 
@@ -102,6 +108,47 @@ int reset_config_status(int status)
 	return ret;
 }
 
+int check_device_path(void)
+{
+	int ret = 0;
+	struct stat fstat;
+	ret = stat(PWM_DIR, &fstat);
+	if (ret < 0) {
+		err("PWM is not enable in dts\n");
+		return ret;
+	}
+	ret = stat(PWM_DIR PWM_CHANNEL, &fstat);
+	if (ret == 0) {
+		err("PWM %s is exist\n", PWM_CHANNEL);
+		return ret;
+	}
+	config_device_t *pconf;
+	for (pconf = config_device_list; pconf->path != NULL; pconf++) {
+		ret = write_file_config(pconf->path, pconf->val, pconf->type);
+		if (ret != 0) {
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int unconfig_device_path(void)
+{
+	int ret = 0;
+
+	config_device_t *pconf;
+	for (pconf = unconfig_device_list; pconf->path != NULL; pconf++) {
+		ret = write_file_config(pconf->path, pconf->val, pconf->type);
+		if (ret != 0) {
+			err("Unconfig %s[%s] fail\n", pconf->path, pconf->val);
+		}
+	}
+
+	return 0;
+}
+
+
 int warm_reset(void)
 {
 	int ret = 0;
@@ -173,10 +220,21 @@ int main(int argc, char **argv)
 			test_case = atoi(optarg);
 			debug("Test case: %d\n", test_case);
 			break;
+
+			case 'q':
+			unconfig_device_path();
+			return 0;
+			break;
 			
 			case 'v':
 			break;
 		}
+	}
+
+	ret = check_device_path();
+	if (ret != 0) {
+		err("%s fail\n", "check_device_path");
+		return ret;
 	}
 	
 	dev_fd = open("/dev/mem", O_RDWR | O_NDELAY);      
@@ -187,19 +245,9 @@ int main(int argc, char **argv)
 	tmc200.reg = (unsigned char *)mmap(NULL, REG_SIZE, 
 		PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, REG_BASE);
 	
-	ret = init_uart(tmc200.dev);
+	tmc200.uart_fd = init_uart(tmc200.dev);
 	if(ret < 0){
 		return -1;
-	}
-	
-	*(volatile unsigned int *)(tmc200.reg + 0x7E4) = 0x0000F; // disable tx
-
-	config_device_t *pconf;
-	for (pconf = config_device_list; pconf->path != NULL; pconf++) {
-		ret = write_file_config(pconf->path, pconf->val, pconf->type);
-		if (ret != 0) {
-			return ret;
-		}
 	}
 
 	switch (test_case) {
@@ -219,13 +267,13 @@ int main(int argc, char **argv)
 		
 		case 2:
 		{
-			char cmd[] = {0x00, 0x84, 0x00, 0x00, 0x08};
+			char cmd[] = {0x00, 0x84, 0x00, 0x00, 0x04};
 			char *ret_cmd;
 			int i;
 			set_apdu_buf(cmd, sizeof(cmd));
 			ret = trans_t0();
 			if (ret == 0) {
-				err("Execute card reset fail\n");
+				err("Execute cmd fail\n");
 				break;
 			}
 			i = get_apdu_length();
@@ -235,15 +283,9 @@ int main(int argc, char **argv)
 		break;
 	}
 	
+	flush_uart();
 	
 	close_uart();
-	
-	for (pconf = unconfig_device_list; pconf->path != NULL; pconf++) {
-		ret = write_file_config(pconf->path, pconf->val, pconf->type);
-		if (ret != 0) {
-			err("Unconfig %s[%s] fail\n", pconf->path, pconf->val);
-		}
-	}
 	
 	munmap(tmc200.reg, REG_SIZE);
 	close(dev_fd);

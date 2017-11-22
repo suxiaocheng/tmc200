@@ -12,6 +12,7 @@
 #include <termios.h>
 #include <sys/mman.h>
 
+
 #include "debug.h"
 
 typedef enum{
@@ -25,8 +26,8 @@ typedef struct{
 	config_type_e type;
 }config_device_t;
 
-#define UART_DEV	"/dev/ttyS0"
-#define RST_GPIO	"136"
+#define UART_DEV	"/dev/ttyS6"
+#define RST_GPIO	"79"
 
 #define REG_BASE   (0x4A003000)
 #define REG_SIZE        1024*4
