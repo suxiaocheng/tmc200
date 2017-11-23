@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 #include "debug.h"
 
@@ -18,6 +19,15 @@
 #define TIMEOUT_START	200
 #define TIMEOUT_CHAR	20
 
+typedef struct{
+	int 		type;	// 0: receive, 1: send
+	unsigned char 	dat[64]; // storage max 64 bytes data
+	unsigned int	valid_len;
+	unsigned int	len;
+	struct timeval	timestamp;
+}debug_log_buf;
+
+void print_uart_log(void);
 int init_uart(char *name);
 int close_uart(void);
 int test_uart(void);

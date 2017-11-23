@@ -2,6 +2,59 @@
 
 static int uart_fd;
 
+#ifdef DEBUG_UART_IO
+debug_log_buf uart_log_buf[1000];
+unsigned int uart_log_len = 0;
+
+static int uart_log(unsigned char *buf, int count, int type)
+{
+	int copy_count = count;
+	if (uart_log_len >= sizeof(uart_log_buf)/sizeof(debug_log_buf)) {
+		return 1;
+	}
+	if (count == 0) {
+		return 0;
+	}
+	if (copy_count > sizeof(uart_log_buf[uart_log_len].dat)) {
+		copy_count = sizeof(uart_log_buf[uart_log_len].dat);
+	}
+	memcpy(uart_log_buf[uart_log_len].dat, buf, copy_count);
+
+	gettimeofday(&(uart_log_buf[uart_log_len].timestamp), NULL);
+
+	uart_log_buf[uart_log_len].type = type;
+	uart_log_buf[uart_log_len].len = count;
+	uart_log_buf[uart_log_len].valid_len = copy_count;
+
+	uart_log_len++;
+	return 0;
+}
+
+void print_uart_log(void)
+{
+	unsigned int i;
+	for (i=0; i<uart_log_len; i++) {
+		printf("%sTimestamp[%ld.%ld]: len[%d/%d]:\n",
+			(uart_log_buf[i].type == 0)?"<--":"-->",
+			uart_log_buf[i].timestamp.tv_sec,
+			uart_log_buf[i].timestamp.tv_usec,
+			uart_log_buf[i].valid_len,
+			uart_log_buf[i].len);
+		dump_memory(uart_log_buf[i].dat, uart_log_buf[i].valid_len);
+	}
+}
+#else
+
+__inline static int uart_log(unsigned char *buf, int count, int type)
+{
+}
+
+void print_uart_log(void)
+{
+}
+
+#endif
+
 void set_speed(int speed)
 {
 	unsigned int i;
@@ -178,7 +231,7 @@ int test_uart(void)
 
 void flush_uart(void)
 {
-	#if 1
+	#ifdef DEBUG_UART_IO
 	int ret;
 	unsigned char buf[16];
 	debug("*****Start of %s\n", __func__);
@@ -198,6 +251,8 @@ int uart_send_bytes(char *buf, int count)
 {
 	int offset = 0, tmp;
 	unsigned char *recv_buf = (unsigned char *)malloc(count);
+
+	uart_log(buf, count, 1);
 	
 	while (offset < count) {
 		tmp = write(uart_fd, buf+offset, count-offset);
@@ -251,6 +306,8 @@ int uart_read_bytes(char *buf, int count, int timeout)
 			break;
 		}
 	}
+
+	uart_log(buf, offset, 0);
 
 	if (offset >= count) {
 		return count;

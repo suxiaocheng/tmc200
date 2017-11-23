@@ -281,9 +281,30 @@ int main(int argc, char **argv)
 			dump_memory(ret_cmd, i);
 		}
 		break;
+
+		case 3:
+		{
+			char cmd[] = {0x00, 0xa4, 0x04, 0x00, 0x10, 0x10, 0xa0,
+				0x00, 0x00, 0x06, 0x28, 0x00, 0x00, 0x01, 0x00,
+				0x00, 0x00, 0x00, 0x01, 0xe2, 0x00, 0x01};
+			char *ret_cmd;
+			int i;
+			set_apdu_buf(cmd, sizeof(cmd));
+			ret = trans_t0();
+			if (ret == 0) {
+				err("Execute cmd fail\n");
+				break;
+			}
+			i = get_apdu_length();
+			ret_cmd = get_apdu();
+			dump_memory(ret_cmd, i);
+		}
+		break;
 	}
 	
 	flush_uart();
+
+	print_uart_log();
 	
 	close_uart();
 	
