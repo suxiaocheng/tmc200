@@ -15,6 +15,8 @@
 
 #include "debug.h"
 
+#define DEBUG_UART_IO
+
 /* timeout unit: 100us */
 #define TIMEOUT_START	200
 #define TIMEOUT_CHAR	20
