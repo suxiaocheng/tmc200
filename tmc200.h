@@ -33,7 +33,6 @@ typedef struct{
 #define REG_SIZE        1024*4
 
 typedef struct {
-	unsigned char *reg;
 	unsigned char *dev;
 	unsigned int uart_fd;
 } tmc200_t;

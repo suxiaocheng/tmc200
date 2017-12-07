@@ -59,16 +59,16 @@ int write_file_config(char *loc, char *str, config_type_e type)
 		int i, j;
 		count = read(fd, buf, sizeof(buf));
 		for(i=0; i<(count+15)/16; i++){
-			printf("%-8x: ", i*16);
+			debug("%-8x: ", i*16);
 			for(j=0; j<16; j++){
-				printf("%4x", buf[i*16+j]);
+				debug("%4x", buf[i*16+j]);
 				if(i*16+j > count){
 					break;
 				}
 			}
-			printf("\n");
+			debug("\n");
 		}
-		printf("\n\n");
+		debug("\n\n");
 	}
 #endif
 	switch (type) {
@@ -199,7 +199,6 @@ int usage(void)
 int main(int argc, char **argv)
 {
 	int ret = 0;
-	int dev_fd;
 	int cret;
 	int test_case = 0;
 	
@@ -237,16 +236,8 @@ int main(int argc, char **argv)
 		return ret;
 	}
 	
-	dev_fd = open("/dev/mem", O_RDWR | O_NDELAY);      
-	if (dev_fd < 0) {
-		err("open(/dev/mem) failed.");
-		return 0;
-	}	
-	tmc200.reg = (unsigned char *)mmap(NULL, REG_SIZE, 
-		PROT_READ | PROT_WRITE, MAP_SHARED, dev_fd, REG_BASE);
-	
 	tmc200.uart_fd = init_uart(tmc200.dev);
-	if(ret < 0){
+	if(tmc200.uart_fd < 0){
 		return -1;
 	}
 
@@ -307,9 +298,6 @@ int main(int argc, char **argv)
 	print_uart_log();
 	
 	close_uart();
-	
-	munmap(tmc200.reg, REG_SIZE);
-	close(dev_fd);
 
 	return ret;
 }
