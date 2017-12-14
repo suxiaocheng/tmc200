@@ -1,6 +1,9 @@
 #include "uart.h"
 #include "7816.h"
 
+#define BTC_IO_TIMEOUT		1
+#define BTC_IO_OK		0
+
 struct atr_t atr;
 uint8_t apdu[320];// qn9020 to cpucard  (head+apdu)   /*5+255*/
 uint16_t apdu_length;
@@ -52,12 +55,118 @@ void CARDsendbyte(uint8_t data)
 }
 
 #if 1
+uint16_t fetch_Fi(uint8_t TA1)
+{
+	switch(TA1&0xf0){
+		case 0x00:
+		case 0x10:
+			return 372;
+		case 0x20:
+			return 558;
+		case 0x30:
+			return 744;
+		case 0x40:
+			return 1116;
+		case 0x50:
+			return 1488;
+		case 0x60:
+			return 1860;
+		case 0x90:
+			return 512;
+		case 0xa0:
+			return 768;
+		case 0xb0:
+			return 1024;
+		case 0xc0:
+			return 1536;
+		case 0xd0:
+			return 2048;
+		default:
+			return 0;//RFU
+	}
+}
+uint8_t fetch_Di(uint8_t TA1)
+{
+	switch(TA1&0xf){
+		case 0x1:
+			return 1;
+		case 0x2:
+			return 2;
+		case 0x3:
+			return 4;
+		case 0x4:
+			return 8;
+		case 0x5:
+			return 16;
+		case 0x6:
+			return 32;
+		case 0x7:
+			return 64;
+		case 0x8:
+			return 12;
+		case 0x9:
+			return 20;
+		default:
+			return 0;//RFU
+	}
+//	return 0;//RFU
+}
+
+uint8_t set_bps(uint8_t TA1, uint8_t *info)
+{
+	uint32_t Divisor = 0;
+	uint8_t m = 0, bcc = 0xff^0x10^TA1, tmp;
+
+	tx_enable();
+	delay_etu();
+	delay_etu();
+	delay_etu();
+
+	CARDsendbyte(0xff);//PPSS
+	CARDsendbyte(0x10);//PPS0
+	CARDsendbyte(TA1);//PPS1
+	CARDsendbyte(bcc);//PCK
+
+	dummy_receive();
+	tmp = CARDrecvbyte();//ppss
+	if(STATE_FLAG)
+		return BTC_IO_TIMEOUT;//timeout
+	if(tmp != 0xff)
+		return BTC_IO_TIMEOUT;
+	info[0] = tmp;
+	tmp = CARDrecvbyte();//pps0
+	if(STATE_FLAG)
+		return BTC_IO_TIMEOUT;
+	if(tmp != 0x10)
+		return BTC_IO_TIMEOUT;
+	info[1] = tmp;
+	tmp = CARDrecvbyte();//pps1
+	if(STATE_FLAG)
+		return BTC_IO_TIMEOUT;
+	if(tmp != TA1)
+		return BTC_IO_TIMEOUT;
+	info[2] = tmp;
+	tmp = CARDrecvbyte();//pck
+	if(STATE_FLAG)
+		return BTC_IO_TIMEOUT;
+	if(tmp != bcc)
+		return BTC_IO_TIMEOUT;
+	info[3] = tmp;
+
+	set_speed(230400);
+
+	return BTC_IO_OK;//success
+}
+
+
 uint8_t atr_info[32];
 uint8_t CARDreset(void)
 {
 	uint8_t kk,answerBcc,len,temp;
 	uint8_t TD,TD2 = 0;
 	uint32_t ret;
+	uint8_t TA1 = 0;
+	uint8_t buf[16];
 	
 	TC1 = 0;
 //	TA1 = 0;
@@ -109,8 +218,8 @@ uint8_t CARDreset(void)
 			if(STATE_FLAG)
 				return 0;
 
-//			if(kk == 1)       //TA1
-//				TA1 = temp;
+			if(kk == 1)       //TA1
+				TA1 = temp;
 
 //			if(kk == 2)
 //				TA2 = temp;
@@ -195,9 +304,14 @@ uint8_t CARDreset(void)
 		len += 1;
 	}
 	
-#if 0//!GPIO_7816
-	if(!((TA1 == 0x0)||(TA1 == 0x01)||(TA1 == 0x11)||(fetch_Fi(TA1)==0)||(fetch_Di(TA1)==0)))
-		set_bps(TA1);
+#if 1
+	if(!((TA1 == 0x0)||(TA1 == 0x01)||(TA1 == 0x11)||(fetch_Fi(TA1)==0)||(fetch_Di(TA1)==0))){
+		int ret = set_bps(0x96, buf);
+		if(ret != 0){
+			err("set bps error");
+			dump_memory(buf, 4);
+		}
+	}
 #endif
 	
 	return len;

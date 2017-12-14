@@ -61,10 +61,10 @@ void set_speed(int speed)
 	int status;
 	struct termios Opt;
 
-	int speed_arr[] = {B115200, B38400, B19200, B9600, B4800, B2400, B1200, B300,
+	int speed_arr[] = {B230400, B115200, B38400, B19200, B9600, B4800, B2400, B1200, B300,
 	                   B38400, B19200, B9600, B4800, B2400, B1200, B300,
 	                  };
-	int name_arr[] = {115200, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400,
+	int name_arr[] = {230400, 115200, 38400, 19200, 9600, 4800, 2400, 1200, 300, 38400,
 	                  19200, 9600, 4800, 2400, 1200, 300,
 	                 };
 	tcgetattr(uart_fd, &Opt);
@@ -180,7 +180,7 @@ int init_uart(char *name)
 		return -1;
 	}	
 
-	set_speed(9600);
+	set_speed(230400);
 	if (set_Parity(8, 2, 'E') == 0) {
 		err("Set uart[%s] parity fail\n", name);
 		return -1;

@@ -7,8 +7,8 @@
 
 config_device_t config_device_list[] = {
 	{PWM_DIR"export", "0", TYPE_STR},
-	{PWM_DIR PWM_CHANNEL "period", "280", TYPE_STR},
-	{PWM_DIR PWM_CHANNEL "duty_cycle", "140", TYPE_STR},
+	{PWM_DIR PWM_CHANNEL "period", "270", TYPE_STR},
+	{PWM_DIR PWM_CHANNEL "duty_cycle", "135", TYPE_STR},
 	{PWM_DIR PWM_CHANNEL "enable", "1", TYPE_STR},
 	{"/sys/class/gpio/export", RST_GPIO, TYPE_STR},
 	{"/sys/class/gpio/gpio"RST_GPIO"/direction", "out", TYPE_STR},
@@ -243,6 +243,7 @@ int main(int argc, char **argv)
 
 	switch (test_case) {
 		case 0:
+		set_speed(9600);
 		ret = warm_reset();
 		if (ret != 0) {
 			err("Execute warm reset fail\n");
@@ -250,6 +251,7 @@ int main(int argc, char **argv)
 		break;
 		
 		case 1:
+		set_speed(9600);
 		ret = CARDreset();
 		if (ret == 0) {
 			err("Execute card reset fail\n");
